@@ -8,12 +8,13 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">= 3.10"
-pandas = "^2.2.2"
+pandas = "2.2.0"
 scikit-learn = "^1.5.1"
 matplotlib = "^3.9.1"
 seaborn = "^0.13.2"
 sodapy = "^2.2.0"
 ipykernel = "^6.29.5"
+python-dotenv = "^1.0.1"
 
 
 [build-system]
