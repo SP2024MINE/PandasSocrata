@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "pandassocrata"
+name = "app"
 version = "0.1.0"
 description = "Analisis con socrata de contratos Colombia"
 authors = ["juangonzalez <juank.gonzalezr1@gmail.com>"]
@@ -20,3 +20,4 @@ python-dotenv = "^1.0.1"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+package-mode = false 
