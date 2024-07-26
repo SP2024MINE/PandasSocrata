@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "pandassocrata"
+version = "0.1.0"
+description = "Analisis con socrata de contratos Colombia"
+authors = ["juangonzalez <juank.gonzalezr1@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">= 3.10"
+pandas = "^2.2.2"
+scikit-learn = "^1.5.1"
+matplotlib = "^3.9.1"
+seaborn = "^0.13.2"
+sodapy = "^2.2.0"
+ipykernel = "^6.29.5"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
