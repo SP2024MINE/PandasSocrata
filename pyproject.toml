@@ -2,7 +2,7 @@
 name = "app"
 version = "0.1.0"
 description = "Analisis con socrata de contratos Colombia"
-authors = ["juangonzalez <juank.gonzalezr1@gmail.com>"]
+authors = ["Juan Camilo Gonzalez", "Laura Nataly Sánchez Valencia", "Karla Victoria Ramirez", "Maria Alejandra Estupiñán"]
 license = "MIT"
 readme = "README.md"
 
