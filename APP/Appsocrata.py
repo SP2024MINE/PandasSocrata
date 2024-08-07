@@ -3,33 +3,41 @@ import pandas as pd
 from sodapy import Socrata
 import re
 import datetime
+import altair as alt
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
+
+# import os
+# from dotenv import load_dotenv
+# load_dotenv('.env')
+
+# APP_TOKEN = os.getenv("TOKEN_SODAPY")
+# DATASET_ID = os.getenv("DATASET_ID")
 
 st.title("Consulta de Datos de Contratación")
+st.subheader("FABRICA DE LICORES DEL TOLIMA")
 
 # Configuración de la API Socrata
-client = Socrata("www.datos.gov.co", None)
+client = Socrata("www.datos.gov.co", 
+                #  APP_TOKEN
+                 None
+                 )
 
 consulta =  """SELECT 
 proveedor_adjudicado,
 tipo_de_contrato, 
-modalidad_de_contratacion,
 valor_del_contrato,
 fecha_de_firma,
 estado_contrato, 
-duraci_n_del_contrato,
-condiciones_de_entrega 	
+duraci_n_del_contrato
 WHERE nombre_entidad = "FABRICA DE LICORES DEL TOLIMA"
 limit 2000"""
-data_id = "jbjy-vk9h"
 
-# Solicitud de datos
-@st.cache_data
-def load_data():
-    results = client.get("jbjy-vk9h",query = consulta)
-    return pd.DataFrame.from_records(results)
 
-df = load_data()
-
+results = client.get(
+    # DATASET_ID
+    "jbjy-vk9h"
+    , query=consulta)
+df = pd.DataFrame.from_records(results)
 
 # Función para convertir el tiempo a días
 def convertir_a_dias(tiempo):
@@ -52,15 +60,17 @@ df['valor_del_contrato'] = df['valor_del_contrato'].astype(float)
 
 # Nombre de proveedor en mayúsculas
 df.proveedor_adjudicado = df.proveedor_adjudicado.str.upper()
+df.tipo_de_contrato = df.tipo_de_contrato.str.upper()
 
 # Fijar nuevo formato de fecha
 df['fecha_de_firma'] = pd.to_datetime(df['fecha_de_firma'])
-#df['fecha_de_firma'] = df['fecha_de_firma'].dt.date
 
-# Mostrar datos
-
-start_date = st.date_input('Fecha de inicio', df['fecha_de_firma'].min().date())
-end_date = st.date_input('Fecha de finalización', df['fecha_de_firma'].max().date())
+# Creamos columnas para mostrar los filtros de fecha
+col1, col2 = st.columns(2)
+with col1:
+    start_date = st.date_input('Fecha de inicio', df['fecha_de_firma'].min().date())
+with col2:
+    end_date = st.date_input('Fecha de finalización', df['fecha_de_firma'].max().date())
 
 start_date = pd.to_datetime(start_date)
 end_date = pd.to_datetime(end_date)
@@ -68,28 +78,65 @@ end_date = pd.to_datetime(end_date)
 df_filtrada0= df[(df['fecha_de_firma'] >= start_date) &
                  (df['fecha_de_firma'] <= end_date)]
 
-list_tipo = df_filtrada0['tipo_de_contrato'].drop_duplicates()
- 
+list_tipo = df_filtrada0['tipo_de_contrato'].value_counts().index.tolist()
+
 tc= st.selectbox('Seleccione un tipo de contrato', list_tipo,
                         placeholder='Seleccione un tipo de contrato único')
 
-df_filtrada1 = df_filtrada0[(df_filtrada0['tipo_de_contrato'] == tc)]
+df_filtrada1 = df_filtrada0[(df_filtrada0['tipo_de_contrato']== tc)]
 
-list_proveedor = df_filtrada1['proveedor_adjudicado'].drop_duplicates()
+# Construcción de métricas
+cantidad_contratos = df_filtrada1['proveedor_adjudicado'].count()
+monto = df_filtrada1['valor_del_contrato'].sum()
+monto_mean = df_filtrada1['valor_del_contrato'].mean()
 
-pa= st.selectbox('Seleccione un Proveedor Adjudicado', list_proveedor,
-                        placeholder='Seleccione un proveedor')
+# Presentación de metricas en la misma fila
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric('Cantidad de contratos', f"{cantidad_contratos}")
+with col2:
+    st.metric('Monto total contratado', f"${monto:,.0f}")
+with col3:
+    st.metric('Promedio de monto por contrato', f"${monto_mean:,.0f}")
 
-df_filtrada2 = df_filtrada1[(df_filtrada1['proveedor_adjudicado'] == pa)]
+# Realizar el groupby
+tabla_resumen = df_filtrada1.groupby('proveedor_adjudicado').agg(
+    Contratos = ('proveedor_adjudicado', 'count'),
+    Monto = ('valor_del_contrato', 'sum'),
+    Duracion = ('duracion_en_dias', 'mean'),
+).reset_index()
 
-cantidad_contratos = df_filtrada2['proveedor_adjudicado'].count()
-st.metric(label=f'Cantidad de contratos', value=cantidad_contratos )
+tabla_resumen = tabla_resumen.sort_values(by='Contratos', ascending=False)
+tabla_resumen = tabla_resumen.rename(columns={
+    'proveedor_adjudicado': 'Contratista'
+})
 
-monto = df_filtrada2['valor_del_contrato'].sum()
-st.metric(label=f'Monto total contratado', value=monto )
+tabla_resumen['Monto'] = tabla_resumen['Monto'].apply(lambda x: f"${x:,.0f}")
+tabla_resumen['Duracion'] = tabla_resumen['Duracion'].apply(lambda x: f"{x:,.0f} días")
 
-monto_mean = df_filtrada2['valor_del_contrato'].mean()
-st.metric(label=f'Promedio de monto por contrato ', value=monto_mean )
 
-st.write(df_filtrada2)
- 
+# Configurar la tabla interactiva
+gb = GridOptionsBuilder.from_dataframe(tabla_resumen)
+gb.configure_selection('single', use_checkbox=True)
+grid_options = gb.build()
+
+# Mostrar la tabla interactiva
+st.write(f"""Tabla de contratistas:  
+         Cantidad de contratos, monto total adjudicado y duración promedio en por contrato""")
+grid_response = AgGrid(
+    tabla_resumen,
+    gridOptions=grid_options,
+    update_mode=GridUpdateMode.SELECTION_CHANGED,
+    height=300,
+    width='100%'
+)
+
+# Filtrar la data por el proveedor seleccionado
+if grid_response['selected_rows'] is not None:
+    selected_row = grid_response['selected_rows']
+    selected_contratista = selected_row.iloc[0, 0]
+    df_filtrada2 = df_filtrada1[(df_filtrada1['proveedor_adjudicado'] == selected_contratista)]
+
+# Mantener la tabla si no se ha seleccionado un proveedor
+else:
+    df_filtrada2 = df_filtrada1 
