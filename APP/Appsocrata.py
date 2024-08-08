@@ -140,3 +140,41 @@ if grid_response['selected_rows'] is not None:
 # Mantener la tabla si no se ha seleccionado un proveedor
 else:
     df_filtrada2 = df_filtrada1 
+
+st.header('Análisis Gráfico')
+
+# Gráfico de Barras
+bar_chart = alt.Chart(df_filtrada2).mark_bar().encode(
+    x=alt.X('estado_contrato', axis=alt.Axis(title='Estado del Contrato')),
+    y=alt.Y('mean(valor_del_contrato)', axis=alt.Axis(title=None)),
+    color=alt.Color('estado_contrato', legend=None)
+).properties(
+    title='Valor promedio de contrato por estado'
+)
+
+# Gráfico Circular
+pie_chart = alt.Chart(df_filtrada2).mark_arc().encode(
+    theta=alt.Theta(field='estado_contrato', type='nominal', aggregate='count'),
+    color=alt.Color(field='estado_contrato', type='nominal')
+).properties(
+    title='Cantidad de contratos por estado'
+)
+
+# Presentación de gráfico de barras y circular en la misma línea
+col1, col2 = st.columns(2)
+with col1:
+    st.altair_chart(bar_chart, use_container_width=True)
+with col2:
+    st.altair_chart(pie_chart, use_container_width=True)
+
+df_filtrada2['fecha_de_firma'] = df_filtrada2['fecha_de_firma'].dt.to_period('M').dt.to_timestamp()
+
+# Gráfico de Líneas 
+line_chart = alt.Chart(df_filtrada2).mark_line().encode(
+    x=alt.X('fecha_de_firma', axis=alt.Axis(title='Fecha de firma')),
+    y=alt.Y('sum(valor_del_contrato)', axis=alt.Axis(title=None)),
+    color=alt.value('blue')
+).properties(
+    title='Valor total de contratos histórico por mes'
+)
+st.altair_chart(line_chart, use_container_width=True)
